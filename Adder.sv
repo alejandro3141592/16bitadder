@@ -30,7 +30,18 @@ module bfloat16_adder (
     checking_zero_exp_num2,
     num2_zero,
     num2_almost_zero,
-    H
+    checking_255_exp_num1, 
+    num1_inf,
+    num1_Nan, 
+    checking_255_exp_num2, 
+    equalize_exponents, 
+    add_mantisas, 
+    normalize_number, 
+    N,
+    O, 
+    P,
+    Q, 
+    AA
   } present_state, next_state;
 
 
@@ -91,7 +102,7 @@ module bfloat16_adder (
 
       num1_almost_zero: begin
         mantissa_num1_aux = {1'b0, mantissa_num1};
-        next_state = H;
+        next_state = checking_zero_exp_num2;
       end
 
       checking_zero_exp_num2: begin
@@ -103,7 +114,7 @@ module bfloat16_adder (
           end
         end else begin
           mantissa_num1_aux = {1'b1, mantissa_num1};
-          next_state = H;
+          next_state = checking_255_exp_num1;
         end 
       end
 
@@ -114,36 +125,58 @@ module bfloat16_adder (
 
       num2_almost_zero: begin
         mantissa_num2_aux = {1'b0, mantissa_num2};
+        next_state = checking_255_exp_num1;
+      end 
+
+      checking_255_exp_num1: begin
+        if (exponent_num1 == 8'd255) begin
+          if (mantissa_num1 == 8'd0) begin
+            next_state = num1_inf;
+          end else begin
+            next_state = num1_Nan;
+          end
+        end else begin
+          next_state = checking_255_exp_num2;
+        end 
+
+      end 
+
+      num1_inf: begin
+        if (exponent_num2 == 8'd255) begin
+          if (mantissa_num2 == 8'd0) begin
+            result = (sign_num1 == sign_num2) ? num1 : {num1, 8'd255, 7'd1};
+          end else begin
+            result = num2;
+          end
+        end else begin
+          result = num1;
+        end 
         next_state = adder_ready;
       end 
 
-      H: begin
+      num1_Nan : begin
+        result = num1;
+        next_state = adder_ready;
+      end
 
-      end 
-
-      I: begin
-
-      end 
-
-      J: begin
+      checking_255_exp_num2: begin
+        if (exponent_num2 == 8'd255) begin
+          result = num2;
+          next_state = adder_ready;
+        end else begin
+          next_state = adder_ready;
+        end 
 
       end
 
-      K: begin
+      equalize_exponents: begin
+
+      end
+      add_mantisas: begin
 
       end
 
-      L: begin
-
-      end
-      M: begin
-
-      end
-      N: begin
-
-      end
-
-      O: begin
+      normalize_number: begin
 
       end
 
