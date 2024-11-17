@@ -6,19 +6,21 @@ module bfloat16_adder (
     input logic clock,
     n_reset,
     output logic sign_num1,
-    sign_num2,
+    sign_num2, sign_sum,
     output logic [7:0] exponent_num1,
     exponent_num2,
-    mantissa_num1,
-    mantissa_num2,
     diference,
     exponent_sum,
+    output logic [6:0] mantissa_num1,
+    mantissa_num2,
     output logic [8:0] mantissa_sum
 );
 
-  logic [15:0] num1, num2, result;
+  logic [15:0] num1, num2;
+  logic [15:0] result = '0;
 
-  logic [9:0] mantissa_num1_aux, mantissa_num2_aux;
+  logic [8:0] mantissa_num1_aux, mantissa_num2_aux;
+  logic [9:0] mantissa_sum_aux;
 
   enum {
     adder_ready,
@@ -53,9 +55,9 @@ module bfloat16_adder (
 
   always_comb begin : COM
 
-
+    
     case (present_state)
-
+      
       adder_ready: begin
         ready = 1'b1;
         sum = result;
@@ -113,7 +115,7 @@ module bfloat16_adder (
             next_state = num2_almost_zero;
           end
         end else begin
-          mantissa_num1_aux = {1'b1, mantissa_num1};
+          mantissa_num2_aux = {1'b1, mantissa_num2};
           next_state = checking_255_exp_num1;
         end 
       end
@@ -166,17 +168,68 @@ module bfloat16_adder (
         end else begin
           next_state = adder_ready;
         end 
+        next_state = equalize_exponents;
 
       end
 
       equalize_exponents: begin
+        $display("exponent_num1 %b, exponent_num2 %b", exponent_num1, exponent_num2);
+        $display("mantissa_num1 %b, mantissa_num2 %b", mantissa_num1_aux, mantissa_num2_aux);
 
+        if (exponent_num1 < exponent_num2) begin 
+        mantissa_num1_aux = mantissa_num1_aux>>(exponent_num2-exponent_num1);
+        exponent_num1 = exponent_num2;
+        end
+        else if(exponent_num2<exponent_num1)begin
+        mantissa_num2_aux = mantissa_num2_aux>>(exponent_num1-exponent_num2);
+        exponent_num2 = exponent_num1;
+        end
+        $display("AFFTER ");
+        $display("exponent_num1 %b, exponent_num2 %b", exponent_num1, exponent_num2);
+        $display("mantissa_num1 %b, mantissa_num2 %b", mantissa_num1_aux, mantissa_num2_aux);
+        next_state = add_mantisas;
       end
+
+
       add_mantisas: begin
+        //Probablemente este mal
+        // primero voy a asumir que los dos son positivos
+
+        if(sign_num1 == sign_num2)begin
+          mantissa_sum_aux = mantissa_num1_aux + mantissa_num2_aux;
+          sign_sum = sign_num1;
+        end
+        else begin
+          if(mantissa_num1_aux < mantissa_num2_aux) begin
+            mantissa_sum_aux = mantissa_num2_aux - mantissa_num1_aux;
+            sign_sum = sign_num2;
+          end else begin
+            mantissa_sum_aux = mantissa_num1_aux - mantissa_num2_aux;
+            sign_sum = sign_num1;
+          end
+        end
+        
+
+
+        $display("mantissa_sum %b", mantissa_sum_aux);
+        exponent_sum = exponent_num1;
+        $display("exponent_sum %b", exponent_sum);
+
+
+      next_state = normalize_number;
 
       end
 
       normalize_number: begin
+
+        if (mantissa_sum_aux[8] == 1) begin
+          mantissa_sum_aux = mantissa_sum_aux >>1;
+          exponent_sum = exponent_sum +1;
+        end
+
+        result = {1'b0, exponent_sum, mantissa_sum_aux[6:0]};
+        $display("result %b", result);
+        next_state = adder_ready;
 
       end
 
