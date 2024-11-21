@@ -22,6 +22,8 @@ module bfloat16_adder (
   logic [8:0] mantissa_num1_aux, mantissa_num2_aux;
   logic [9:0] mantissa_sum_aux;
 
+  logic count = 0;
+
   enum {
     adder_ready,
     reading_first_input,
@@ -38,9 +40,9 @@ module bfloat16_adder (
     checking_255_exp_num2, 
     equalize_exponents, 
     add_mantisas, 
-    normalize_number, 
-    N,
-    O, 
+    normalize_bigger_number, 
+    normalize_smaller_number,
+    build_number, 
     P,
     Q, 
     AA
@@ -131,8 +133,9 @@ module bfloat16_adder (
       end 
 
       checking_255_exp_num1: begin
+        $display("exponent_num1 %d", exponent_num1);
         if (exponent_num1 == 8'd255) begin
-          if (mantissa_num1 == 8'd0) begin
+          if (mantissa_num1 == '0) begin
             next_state = num1_inf;
           end else begin
             next_state = num1_Nan;
@@ -144,8 +147,9 @@ module bfloat16_adder (
       end 
 
       num1_inf: begin
+        $display("exponent_num2 %d", exponent_num2);
         if (exponent_num2 == 8'd255) begin
-          if (mantissa_num2 == 8'd0) begin
+          if (mantissa_num2 == '0) begin
             result = (sign_num1 == sign_num2) ? num1 : {num1, 8'd255, 7'd1};
           end else begin
             result = num2;
@@ -196,10 +200,13 @@ module bfloat16_adder (
         // primero voy a asumir que los dos son positivos
 
         if(sign_num1 == sign_num2)begin
+          
           mantissa_sum_aux = mantissa_num1_aux + mantissa_num2_aux;
+          $display("equal signs %b", mantissa_sum_aux);
           sign_sum = sign_num1;
         end
         else begin
+          $display("different signs %b", mantissa_sum_aux);
           if(mantissa_num1_aux < mantissa_num2_aux) begin
             mantissa_sum_aux = mantissa_num2_aux - mantissa_num1_aux;
             sign_sum = sign_num2;
@@ -216,27 +223,66 @@ module bfloat16_adder (
         $display("exponent_sum %b", exponent_sum);
 
 
-      next_state = normalize_number;
+      next_state = normalize_bigger_number;
 
       end
 
-      normalize_number: begin
+      normalize_bigger_number: begin
 
         if (mantissa_sum_aux[8] == 1) begin
+           $display("8 bit with 1 %b", mantissa_sum_aux);
+           $display("exponent_sum %b", exponent_sum);
           mantissa_sum_aux = mantissa_sum_aux >>1;
           exponent_sum = exponent_sum +1;
         end
 
+        $display("mantissa_sum %b", mantissa_sum_aux);
+
+        $display("exponent_sum %b", exponent_sum);
+
+        if (mantissa_sum_aux[7] != 1) begin
+          count = 0;
+          next_state = normalize_smaller_number;
+        end else 
+        next_state = build_number;
+
+        
+
+      end
+
+      normalize_smaller_number: begin
+        $display("count %b", count);
+
+        if (mantissa_sum_aux[6]) begin    // Check highest priority input
+          mantissa_sum_aux = mantissa_sum_aux <<1;
+          exponent_sum = exponent_sum -1;
+        end else if (mantissa_sum_aux[5]) begin
+            mantissa_sum_aux = mantissa_sum_aux <<2;
+          exponent_sum = exponent_sum -2;
+        end else if (mantissa_sum_aux[4]) begin
+            mantissa_sum_aux = mantissa_sum_aux <<3;
+          exponent_sum = exponent_sum -3;
+        end else if (mantissa_sum_aux[2]) begin
+           mantissa_sum_aux = mantissa_sum_aux <<4;
+          exponent_sum = exponent_sum -4;
+        end else if (mantissa_sum_aux[1]) begin    // Check highest priority input
+            mantissa_sum_aux = mantissa_sum_aux <<5;
+          exponent_sum = exponent_sum -5;
+        end else if (mantissa_sum_aux[0]) begin
+          mantissa_sum_aux = mantissa_sum_aux <<6;
+          exponent_sum = exponent_sum -6;
+        end else begin
+          exponent_sum = '0;
+          mantissa_sum_aux = '0;
+        end
+
+        next_state = build_number;
+          
+      end
+      build_number: begin
         result = {1'b0, exponent_sum, mantissa_sum_aux[6:0]};
         $display("result %b", result);
         next_state = adder_ready;
-
-      end
-
-      P: begin
-
-      end
-      Q: begin
 
       end
 
