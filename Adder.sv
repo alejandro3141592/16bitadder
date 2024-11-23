@@ -54,8 +54,9 @@ module bfloat16_adder (
 
   always_comb begin : COM
 
-    
 
+    ready = 1'b0;
+    num1 = '0;
     
     case (present_state)
       
@@ -284,10 +285,6 @@ module bfloat16_adder (
         next_state = adder_ready;
 
       end
-
-      AA: begin
-
-      end 
 
     endcase
 
