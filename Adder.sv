@@ -4,17 +4,14 @@ module bfloat16_adder (
     input logic [15:0] a,
     b,
     input logic clock,
-    n_reset,
-    output logic sign_num1,
-    sign_num2, sign_sum,
-    output logic [7:0] exponent_num1,
-    exponent_num2,
-    diference,
-    exponent_sum,
-    output logic [6:0] mantissa_num1,
-    mantissa_num2,
-    output logic [8:0] mantissa_sum
+    nreset
 );
+
+  logic sign_num1, sign_num2, sign_sum;
+  
+  logic [7:0] exponent_num1, exponent_num2,diference, exponent_sum;
+  logic [6:0] mantissa_num1, mantissa_num2;
+  logic [8:0] mantissa_sum;
 
   logic [15:0] num1, num2;
   logic [15:0] result = '0;
@@ -49,8 +46,8 @@ module bfloat16_adder (
   } present_state, next_state;
 
 
-  always_ff @(posedge clock, negedge n_reset) begin : SEQ
-    if (~n_reset) present_state <= adder_ready;
+  always_ff @(posedge clock, negedge nreset) begin : SEQ
+    if (~nreset) present_state <= adder_ready;
     else present_state <= next_state;
   end
 
@@ -62,7 +59,7 @@ module bfloat16_adder (
       
       adder_ready: begin
         ready = 1'b1;
-        sum = result;
+        //sum = sum;
         next_state = reading_first_input;
       end
 
@@ -100,7 +97,7 @@ module bfloat16_adder (
       end
 
       num1_zero: begin
-        result = (sign_num1) ? {~sign_num2, exponent_num2, mantissa_num2} : num2;
+        sum = (sign_num1) ? {~sign_num2, exponent_num2, mantissa_num2} : num2;
         next_state = adder_ready;
       end
 
@@ -123,7 +120,7 @@ module bfloat16_adder (
       end
 
       num2_zero: begin
-        result = (sign_num2) ? {~sign_num1, exponent_num1, mantissa_num1} : num1;
+        sum = (sign_num2) ? {~sign_num1, exponent_num1, mantissa_num1} : num1;
         next_state = adder_ready;
       end 
 
@@ -150,30 +147,30 @@ module bfloat16_adder (
         $display("exponent_num2 %d", exponent_num2);
         if (exponent_num2 == 8'd255) begin
           if (mantissa_num2 == '0) begin
-            result = (sign_num1 == sign_num2) ? num1 : {num1, 8'd255, 7'd1};
+            sum = (sign_num1 == sign_num2) ? num1 : {num1, 8'd255, 7'b1};
           end else begin
-            result = num2;
+            sum = num2;
           end
         end else begin
-          result = num1;
+          sum = num1;
         end 
         next_state = adder_ready;
       end 
 
       num1_Nan : begin
-        result = num1;
+        sum = num1;
         next_state = adder_ready;
       end
 
       checking_255_exp_num2: begin
+        $display("exponent_num2 %d", exponent_num2);
         if (exponent_num2 == 8'd255) begin
-          result = num2;
+          $display("inf or nan %d", exponent_num2);
+          sum = num2;
           next_state = adder_ready;
         end else begin
-          next_state = adder_ready;
+          next_state = equalize_exponents;
         end 
-        next_state = equalize_exponents;
-
       end
 
       equalize_exponents: begin
@@ -280,8 +277,8 @@ module bfloat16_adder (
           
       end
       build_number: begin
-        result = {1'b0, exponent_sum, mantissa_sum_aux[6:0]};
-        $display("result %b", result);
+        sum = {1'b0, exponent_sum, mantissa_sum_aux[6:0]};
+        $display("sum %b", sum);
         next_state = adder_ready;
 
       end
