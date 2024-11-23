@@ -9,17 +9,17 @@ module bfloat16_adder (
 
   logic sign_num1, sign_num2, sign_sum;
   
-  logic [7:0] exponent_num1, exponent_num2,diference, exponent_sum;
+  logic [7:0] exponent_num1, exponent_num2, exponent_sum;
   logic [6:0] mantissa_num1, mantissa_num2;
   logic [8:0] mantissa_sum;
 
   logic [15:0] num1, num2;
-  logic [15:0] result = '0;
+  
 
-  logic [8:0] mantissa_num1_aux, mantissa_num2_aux;
+  logic [7:0] mantissa_num1_aux, mantissa_num2_aux;
   logic [9:0] mantissa_sum_aux;
 
-  logic count = 0;
+
 
   enum {
     adder_ready,
@@ -53,6 +53,8 @@ module bfloat16_adder (
 
 
   always_comb begin : COM
+
+    
 
     
     case (present_state)
@@ -91,6 +93,7 @@ module bfloat16_adder (
             next_state = num1_almost_zero;
           end
         end else begin
+          
           mantissa_num1_aux = {1'b1, mantissa_num1};
           next_state = checking_zero_exp_num2;
         end
@@ -108,7 +111,7 @@ module bfloat16_adder (
 
       checking_zero_exp_num2: begin
         if (exponent_num2 == 8'd0) begin
-          if (mantissa_num2 == 8'd0) begin
+          if (mantissa_num2 == 7'd0) begin
             next_state = num2_zero;
           end else begin
             next_state = num2_almost_zero;
@@ -147,7 +150,8 @@ module bfloat16_adder (
         $display("exponent_num2 %d", exponent_num2);
         if (exponent_num2 == 8'd255) begin
           if (mantissa_num2 == '0) begin
-            sum = (sign_num1 == sign_num2) ? num1 : {num1, 8'd255, 7'b1};
+            if (sign_num1 == sign_num2) sum = num1; 
+            else sum = {sign_num1, 8'd255, 7'b1};
           end else begin
             sum = num2;
           end
@@ -230,7 +234,7 @@ module bfloat16_adder (
            $display("8 bit with 1 %b", mantissa_sum_aux);
            $display("exponent_sum %b", exponent_sum);
           mantissa_sum_aux = mantissa_sum_aux >>1;
-          exponent_sum = exponent_sum +1;
+          exponent_sum = exponent_sum +1'b1;
         end
 
         $display("mantissa_sum %b", mantissa_sum_aux);
@@ -238,7 +242,6 @@ module bfloat16_adder (
         $display("exponent_sum %b", exponent_sum);
 
         if (mantissa_sum_aux[7] != 1) begin
-          count = 0;
           next_state = normalize_smaller_number;
         end else 
         next_state = build_number;
@@ -248,26 +251,25 @@ module bfloat16_adder (
       end
 
       normalize_smaller_number: begin
-        $display("count %b", count);
 
         if (mantissa_sum_aux[6]) begin    // Check highest priority input
           mantissa_sum_aux = mantissa_sum_aux <<1;
-          exponent_sum = exponent_sum -1;
+          exponent_sum = exponent_sum - 1'd1;
         end else if (mantissa_sum_aux[5]) begin
             mantissa_sum_aux = mantissa_sum_aux <<2;
-          exponent_sum = exponent_sum -2;
+          exponent_sum = exponent_sum -1'd2;
         end else if (mantissa_sum_aux[4]) begin
             mantissa_sum_aux = mantissa_sum_aux <<3;
-          exponent_sum = exponent_sum -3;
+          exponent_sum = exponent_sum -1'd3;
         end else if (mantissa_sum_aux[2]) begin
            mantissa_sum_aux = mantissa_sum_aux <<4;
-          exponent_sum = exponent_sum -4;
+          exponent_sum = exponent_sum -1'd4;
         end else if (mantissa_sum_aux[1]) begin    // Check highest priority input
             mantissa_sum_aux = mantissa_sum_aux <<5;
-          exponent_sum = exponent_sum -5;
+          exponent_sum = exponent_sum -1'd5;
         end else if (mantissa_sum_aux[0]) begin
           mantissa_sum_aux = mantissa_sum_aux <<6;
-          exponent_sum = exponent_sum -6;
+          exponent_sum = exponent_sum -1'd6;
         end else begin
           exponent_sum = '0;
           mantissa_sum_aux = '0;
