@@ -47,7 +47,6 @@ module bfloat16_adder (
   always_ff @(posedge clock, negedge nreset) begin : SEQ
     if (~nreset) begin 
       present_state <= adder_ready;
-      sum <= 'Z;
 
     end
     else begin
@@ -59,18 +58,32 @@ module bfloat16_adder (
 
   always_comb begin : COM
 
+    num1 = '0;
+    sign_num1 = '0;
+    exponent_num1 = '0;
+    mantissa_num1 = '0;
+    num2 = '0;
+    sign_num2 = '0;
+    exponent_num2 = '0;
+    mantissa_num2 = '0;
+    mantissa_num1_aux = '0;
+    mantissa_num2_aux = '0;
+    exponent_sum = '0;
+    mantissa_sum_aux = '0;
+    sign_sum = '0;
+    final_result = '0;
 
     case (present_state)
       
       adder_ready: begin
-        ready = 1'b1;
+        //ready = 1'b1;
         //sum = sum;
         next_state = reading_first_input;
       end
 
       reading_first_input: begin
         //Read Input A
-        ready = 1'b0;
+        //ready = 1'b0;
         num1 = a;
         sign_num1 = num1[15];
         exponent_num1 = num1[14:7];
@@ -295,6 +308,14 @@ module bfloat16_adder (
   end else begin
     //ready = '0;
     result = sum;
+  end
+
+  if(present_state == adder_ready) begin 
+    ready = '1;
+    //result = final_result;
+  end else begin
+    ready = '0;
+    //result = sum;
   end
 
 
