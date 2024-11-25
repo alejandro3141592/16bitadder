@@ -31,7 +31,8 @@ module bfloat16_adder (
     BUILD_NUMBER,
     RETURN_NUM1,
     RETURN_NUM2,
-    RETURN_NAN
+    RETURN_NAN, 
+    RETURN_INF
   }present_state, next_state;
 
     always_ff @(posedge clock, negedge nreset) begin : SEQ
@@ -84,7 +85,8 @@ module bfloat16_adder (
         next_state = BUILD_NUMBER;
     end
     BUILD_NUMBER: begin
-        next_state = ADDER_READY;
+        if(exponent_sum == 8'd255) next_state = RETURN_INF;
+        else next_state = ADDER_READY;
     end
     RETURN_NUM1: begin
         next_state = ADDER_READY;
@@ -95,7 +97,9 @@ module bfloat16_adder (
     RETURN_NAN: begin
         next_state = ADDER_READY;
     end
-
+    RETURN_INF: begin
+        next_state = ADDER_READY;
+    end
 
     endcase
   end
@@ -197,8 +201,11 @@ module bfloat16_adder (
             $display("sum %b", sum);
         end
         RETURN_NAN: begin
-            sum <= {1'b0, 8'd255, 7'b1};;
+            sum <= {1'b0, 8'd255, 7'b1};
             $display("sum %b", sum);
+        end
+        RETURN_INF: begin
+            sum <= {sign_sum, 8'd255, 7'b0};
         end
 
     endcase   
