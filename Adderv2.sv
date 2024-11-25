@@ -27,7 +27,8 @@ module bfloat16_adder (
     CHECK_ESPECIAL_CASES,
     EQUALIZE_EXPONENTS,
     ADD_MANTISAS,
-    NORMALIZE_NUMBER,
+    NORMALIZE_BIGGER_NUMBER,
+    NORMALIZE_SMALLER_NUMBER,
     BUILD_NUMBER,
     RETURN_NUM1,
     RETURN_NUM2,
@@ -37,7 +38,7 @@ module bfloat16_adder (
 
     always_ff @(posedge clock, negedge nreset) begin : SEQ
     if (~nreset)begin
-        present_state <= ADDER_READY;
+        present_state <= READ_IN1;
     end
     else begin      
         present_state <= next_state;
@@ -79,9 +80,12 @@ module bfloat16_adder (
         next_state = ADD_MANTISAS;
     end
     ADD_MANTISAS: begin
-        next_state = NORMALIZE_NUMBER;
+        next_state = NORMALIZE_BIGGER_NUMBER;
     end
-    NORMALIZE_NUMBER: begin
+    NORMALIZE_BIGGER_NUMBER: begin
+        next_state = NORMALIZE_SMALLER_NUMBER;
+    end
+    NORMALIZE_SMALLER_NUMBER: begin
         next_state = BUILD_NUMBER;
     end
     BUILD_NUMBER: begin
@@ -107,10 +111,10 @@ module bfloat16_adder (
   always_ff @( posedge clock ) begin : LOG
     case(present_state)
         ADDER_READY: begin
-            ready <= '1;
+            ready <= 1'b1;
         end
         READ_IN1: begin
-            ready <= '0;
+            ready <= 1'b0;
             num1 <= a;
             sign_num1 <= a[15];
             exponent_num1 <= a[14:7];
@@ -156,36 +160,37 @@ module bfloat16_adder (
             end
             
         end
-        NORMALIZE_NUMBER: begin
-        if (mantissa_sum_aux[8] == '1) begin
-          mantissa_sum_aux <= mantissa_sum_aux >>1;
-          exponent_sum <= exponent_sum +1'b1;
-        end
-
-        if (mantissa_sum_aux[7] != 1) begin
-            if (mantissa_sum_aux[6]) begin   
-                mantissa_sum_aux <= mantissa_sum_aux <<1;
-                exponent_sum <= exponent_sum - 1'd1;
-            end else if (mantissa_sum_aux[5]) begin
-                mantissa_sum_aux <= mantissa_sum_aux <<2;
-                exponent_sum <= exponent_sum -2'd2;
-            end else if (mantissa_sum_aux[4]) begin
-                mantissa_sum_aux <= mantissa_sum_aux <<3;
-                exponent_sum <= exponent_sum -2'd3;
-            end else if (mantissa_sum_aux[2]) begin
-                mantissa_sum_aux <= mantissa_sum_aux <<4;
-                exponent_sum <= exponent_sum -3'd4;
-            end else if (mantissa_sum_aux[1]) begin   
-                mantissa_sum_aux <= mantissa_sum_aux <<5;
-                exponent_sum <= exponent_sum -3'd5;
-            end else if (mantissa_sum_aux[0]) begin
-                mantissa_sum_aux <= mantissa_sum_aux <<6;
-                exponent_sum <= exponent_sum -3'd6;
-            end else begin
-                exponent_sum <= '0;
-                mantissa_sum_aux <= '0;
+        NORMALIZE_BIGGER_NUMBER: begin
+            if (mantissa_sum_aux[8] == '1) begin
+            mantissa_sum_aux <= mantissa_sum_aux >>1;
+            exponent_sum <= exponent_sum +1'b1;
             end
         end
+        NORMALIZE_SMALLER_NUMBER: begin
+            if (mantissa_sum_aux[7] != 1) begin
+                if (mantissa_sum_aux[6]) begin   
+                    mantissa_sum_aux <= mantissa_sum_aux <<1;
+                    exponent_sum <= exponent_sum - 1'd1;
+                end else if (mantissa_sum_aux[5]) begin
+                    mantissa_sum_aux <= mantissa_sum_aux <<2;
+                    exponent_sum <= exponent_sum -2'd2;
+                end else if (mantissa_sum_aux[4]) begin
+                    mantissa_sum_aux <= mantissa_sum_aux <<3;
+                    exponent_sum <= exponent_sum -2'd3;
+                end else if (mantissa_sum_aux[2]) begin
+                    mantissa_sum_aux <= mantissa_sum_aux <<4;
+                    exponent_sum <= exponent_sum -3'd4;
+                end else if (mantissa_sum_aux[1]) begin   
+                    mantissa_sum_aux <= mantissa_sum_aux <<5;
+                    exponent_sum <= exponent_sum -3'd5;
+                end else if (mantissa_sum_aux[0]) begin
+                    mantissa_sum_aux <= mantissa_sum_aux <<6;
+                    exponent_sum <= exponent_sum -3'd6;
+                end else begin
+                    exponent_sum <= '0;
+                    mantissa_sum_aux <= '0;
+                end
+            end
         end
         BUILD_NUMBER: begin
             sum <= {sign_sum, exponent_sum, mantissa_sum_aux[6:0]};
