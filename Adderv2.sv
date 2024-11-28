@@ -135,10 +135,15 @@ module bfloat16_adder (
         end
         EQUALIZE_EXPONENTS: begin
             if (exponent_num1 < exponent_num2) begin 
-                mantissa_num1_aux <= mantissa_num1_aux>>(exponent_num2-exponent_num1);
+                if(mantissa_num1_aux[(exponent_num2-exponent_num1-1)])
+                mantissa_num1_aux <= (mantissa_num1_aux>>(exponent_num2-exponent_num1))+1;
+                else mantissa_num1_aux <= (mantissa_num1_aux>>(exponent_num2-exponent_num1));
                 exponent_num1 <= exponent_num2;
             end
             else if(exponent_num2<exponent_num1)begin
+                if(mantissa_num2_aux[(exponent_num1-exponent_num2-1)])
+                mantissa_num2_aux <= (mantissa_num2_aux>>(exponent_num1-exponent_num2))+1;
+                else
                 mantissa_num2_aux <= mantissa_num2_aux>>(exponent_num1-exponent_num2);
                 exponent_num2 <= exponent_num1;
             end
